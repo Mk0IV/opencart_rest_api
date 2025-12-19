@@ -50,6 +50,56 @@ class ProductImporter extends \Opencart\System\Engine\Controller {
         ]));
     }
     
+    public function products() {
+        $this->response->addHeader('Content-Type: application/json');
+        
+        // Проверка API токена
+        $token = $this->request->server['HTTP_X_API_TOKEN'] ?? '';
+        if (empty($token)) {
+            $this->response->setOutput(json_encode([
+                'success' => false,
+                'error' => 'API token required',
+                'code' => 401
+            ]));
+            return;
+        }
+        
+        // Проверка токена в БД
+        $query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "api_tokens` WHERE token = '" . $this->db->escape($token) . "' AND status = '1'");
+        
+        if (!$query->num_rows) {
+            $this->response->setOutput(json_encode([
+                'success' => false,
+                'error' => 'Invalid API token',
+                'code' => 401
+            ]));
+            return;
+        }
+        
+        // Получаем товары
+        $query = $this->db->query("
+            SELECT p.product_id, pd.name, p.model, p.sku, p.price, p.quantity, 
+                   p.status, p.date_added, p.date_modified,
+                   cd.name as category_name
+            FROM `" . DB_PREFIX . "product` p
+            LEFT JOIN `" . DB_PREFIX . "product_description` pd ON p.product_id = pd.product_id
+            LEFT JOIN `" . DB_PREFIX . "product_to_category` p2c ON p.product_id = p2c.category_id
+            LEFT JOIN `" . DB_PREFIX . "category_description` cd ON p2c.category_id = cd.category_id
+            WHERE pd.language_id = '" . (int)$this->config->get('config_language_id') . "'
+            AND (cd.language_id = '" . (int)$this->config->get('config_language_id') . "' OR cd.language_id IS NULL)
+            ORDER BY p.product_id DESC
+        ");
+        
+        $this->response->setOutput(json_encode([
+            'success' => true,
+            'data' => [
+                'products' => $query->rows,
+                'total' => count($query->rows)
+            ],
+            'timestamp' => date('Y-m-d H:i:s')
+        ]));
+    }
+    
     public function createCategory() {
         $this->response->addHeader('Content-Type: application/json');
         
@@ -304,6 +354,121 @@ class ProductImporter extends \Opencart\System\Engine\Controller {
         if (isset($product['category_id'])) {
             $this->db->query("DELETE FROM `" . DB_PREFIX . "product_to_category` WHERE product_id = '" . (int)$product_id . "'");
             $this->db->query("INSERT INTO `" . DB_PREFIX . "product_to_category` (product_id, category_id) VALUES ('" . (int)$product_id . "', '" . (int)$product['category_id'] . "')");
+        }
+    }
+    
+    public function deleteCategory(): void {
+        $this->response->addHeader('Content-Type: application/json');
+        
+        $json = json_decode(file_get_contents('php://input'), true);
+        
+        if (!isset($json['category_id'])) {
+            $this->response->setOutput(json_encode([
+                'success' => false,
+                'error' => 'Category ID is required'
+            ]));
+            return;
+        }
+        
+        $category_id = (int)$json['category_id'];
+        
+        try {
+            // Check if category exists
+            $query = $this->db->query("SELECT category_id FROM `" . DB_PREFIX . "category` WHERE category_id = '" . $category_id . "'");
+            
+            if ($query->num_rows == 0) {
+                $this->response->setOutput(json_encode([
+                    'success' => false,
+                    'error' => 'Category not found'
+                ]));
+                return;
+            }
+            
+            // Delete category and all related data
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "category_to_layout` WHERE category_id = '" . $category_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "category_to_store` WHERE category_id = '" . $category_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "category_filter` WHERE category_id = '" . $category_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "category_path` WHERE category_id = '" . $category_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "category_description` WHERE category_id = '" . $category_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "category` WHERE category_id = '" . $category_id . "'");
+            
+            $this->response->setOutput(json_encode([
+                'success' => true,
+                'data' => [
+                    'category_id' => $category_id,
+                    'message' => 'Category deleted successfully'
+                ]
+            ]));
+            
+        } catch (\Exception $e) {
+            $this->response->setOutput(json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]));
+        }
+    }
+    
+    public function deleteProduct(): void {
+        $this->response->addHeader('Content-Type: application/json');
+        
+        $json = json_decode(file_get_contents('php://input'), true);
+        
+        if (!isset($json['product_id'])) {
+            $this->response->setOutput(json_encode([
+                'success' => false,
+                'error' => 'Product ID is required'
+            ]));
+            return;
+        }
+        
+        $product_id = (int)$json['product_id'];
+        
+        try {
+            // Check if product exists
+            $query = $this->db->query("SELECT product_id FROM `" . DB_PREFIX . "product` WHERE product_id = '" . $product_id . "'");
+            
+            if ($query->num_rows == 0) {
+                $this->response->setOutput(json_encode([
+                    'success' => false,
+                    'error' => 'Product not found'
+                ]));
+                return;
+            }
+            
+            // Delete product and all related data
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "product_to_category` WHERE product_id = '" . $product_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "product_to_download` WHERE product_id = '" . $product_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "product_to_layout` WHERE product_id = '" . $product_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "product_to_store` WHERE product_id = '" . $product_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "product_attribute` WHERE product_id = '" . $product_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "product_description` WHERE product_id = '" . $product_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "product_discount` WHERE product_id = '" . $product_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "product_filter` WHERE product_id = '" . $product_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "product_image` WHERE product_id = '" . $product_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "product_option` WHERE product_id = '" . $product_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "product_option_value` WHERE product_id = '" . $product_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "product_related` WHERE product_id = '" . $product_id . "' OR related_id = '" . $product_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "product_reward` WHERE product_id = '" . $product_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "product_special` WHERE product_id = '" . $product_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "product_subscription` WHERE product_id = '" . $product_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "product_viewed` WHERE product_id = '" . $product_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "product_code` WHERE product_id = '" . $product_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "review` WHERE product_id = '" . $product_id . "'");
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "product` WHERE product_id = '" . $product_id . "'");
+            
+            $this->response->setOutput(json_encode([
+                'success' => true,
+                'data' => [
+                    'product_id' => $product_id,
+                    'message' => 'Product deleted successfully'
+                ]
+            ]));
+            
+        } catch (\Exception $e) {
+            $this->response->setOutput(json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]));
         }
     }
 }
