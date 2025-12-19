@@ -821,11 +821,12 @@ class ProductImporter extends \Opencart\System\Engine\Controller {
         
         $json = json_decode(file_get_contents('php://input'), true);
         
-        // Support both formats: old (type, id, image) and new (filename, image_data)
+        // Support both formats: old (type, id, image) and new (filename, image_data, product_id)
         if (isset($json['filename']) && isset($json['image_data'])) {
             // New format: simple file upload for sync script
             $filename = basename($json['filename']);
             $imageData = $json['image_data'];
+            $product_id = isset($json['product_id']) ? (int)$json['product_id'] : 0;
             
             // Validate filename
             if (!preg_match('/^[a-zA-Z0-9._-]+$/', $filename)) {
@@ -892,11 +893,22 @@ class ProductImporter extends \Opencart\System\Engine\Controller {
             // Move temp file to target location
             if (rename($tempFile, $targetPath)) {
                 chmod($targetPath, 0644);
+                
+                // If product_id is provided, attach image to product
+                if ($product_id > 0) {
+                    // Update product's main image
+                    $this->db->query("UPDATE `" . DB_PREFIX . "product` SET image = '" . $this->db->escape('catalog/' . $filename) . "' WHERE product_id = '" . (int)$product_id . "'");
+                    
+                    // Also add to product_images table for additional images
+                    $this->db->query("INSERT INTO `" . DB_PREFIX . "product_image` (product_id, image, sort_order) VALUES ('" . (int)$product_id . "', '" . $this->db->escape('catalog/' . $filename) . "', 0)");
+                }
+                
                 $this->response->setOutput(json_encode([
                     'success' => true,
                     'data' => [
                         'image_path' => 'catalog/' . $filename,
-                        'filename' => $filename
+                        'filename' => $filename,
+                        'product_id' => $product_id
                     ],
                     'timestamp' => date('Y-m-d H:i:s')
                 ]));
