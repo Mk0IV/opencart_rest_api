@@ -146,6 +146,29 @@ class ProductImporter extends \Opencart\System\Engine\Controller {
         // Вставить описание
         $this->db->query("INSERT INTO `" . DB_PREFIX . "category_description` (category_id, language_id, name, description, meta_title) VALUES ('" . (int)$category_id . "', '" . (int)$this->config->get('config_language_id') . "', '" . $this->db->escape($input['name']) . "', '" . $this->db->escape($description) . "', '" . $this->db->escape($input['name']) . "')");
         
+        // Вставить назначение магазина (по умолчанию к магазину 0)
+        $this->db->query("INSERT INTO `" . DB_PREFIX . "category_to_store` (category_id, store_id) VALUES ('" . (int)$category_id . "', 0)");
+        
+        // Вставить путь категории
+        if ($parent_id == 0) {
+            $this->db->query("INSERT INTO `" . DB_PREFIX . "category_path` (category_id, path_id, level) VALUES ('" . (int)$category_id . "', '" . (int)$category_id . "', 0)");
+        } else {
+            $query = $this->db->query("SELECT level FROM `" . DB_PREFIX . "category_path` WHERE category_id = '" . (int)$parent_id . "' ORDER BY level DESC LIMIT 1");
+            
+            if ($query->num_rows) {
+                $level = (int)$query->row['level'] + 1;
+            } else {
+                $level = 0;
+            }
+            
+            $path_query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "category_path` WHERE category_id = '" . (int)$parent_id . "' ORDER BY level ASC");
+            
+            foreach ($path_query->rows as $path) {
+                $this->db->query("INSERT INTO `" . DB_PREFIX . "category_path` (category_id, path_id, level) VALUES ('" . (int)$category_id . "', '" . (int)$path['path_id'] . "', '" . (int)$level . "')");
+                $level++;
+            }
+        }
+        
         $this->response->setOutput(json_encode([
             'success' => true,
             'data' => [
