@@ -19,7 +19,7 @@ All API requests require an API token sent in the `X-API-Token` header.
 
 #### Get All Categories
 ```bash
-curl -X GET "http://your-store.com/index.php?route=extension/product_importer/api/categories" \
+curl -X GET "http://your-store.com/index.php?route=tool/product_importer|categories" \
   -H "X-API-Token: test_api_token_12345"
 ```
 
@@ -45,7 +45,7 @@ curl -X GET "http://your-store.com/index.php?route=extension/product_importer/ap
 
 #### Create Category
 ```bash
-curl -X POST "http://your-store.com/index.php?route=extension/product_importer/api/categories/create" \
+curl -X POST "http://your-store.com/index.php?route=tool/product_importer|createCategory" \
   -H "Content-Type: application/json" \
   -H "X-API-Token: test_api_token_12345" \
   -d '{
@@ -72,7 +72,7 @@ curl -X POST "http://your-store.com/index.php?route=extension/product_importer/a
 
 #### Import Products
 ```bash
-curl -X POST "http://your-store.com/index.php?route=extension/product_importer/api/products/import" \
+curl -X POST "http://your-store.com/index.php?route=tool/product_importer|importProducts" \
   -H "Content-Type: application/json" \
   -H "X-API-Token: test_api_token_12345" \
   -d '{
