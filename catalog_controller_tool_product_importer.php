@@ -284,13 +284,13 @@ class ProductImporter extends \Opencart\System\Engine\Controller {
                 if (!$existingProduct) {
                     return ['success' => false, 'error' => 'Product not found'];
                 }
-                $this->updateProduct($existingProduct['product_id'], $product);
+                $this->updateProductData($existingProduct['product_id'], $product);
                 return ['success' => true, 'product_id' => $existingProduct['product_id'], 'action' => 'update'];
                 
             case 'merge':
             default:
                 if ($existingProduct) {
-                    $this->updateProduct($existingProduct['product_id'], $product);
+                    $this->updateProductData($existingProduct['product_id'], $product);
                     return ['success' => true, 'product_id' => $existingProduct['product_id'], 'action' => 'update'];
                 } else {
                     $product_id = $this->createProduct($product);
@@ -313,7 +313,7 @@ class ProductImporter extends \Opencart\System\Engine\Controller {
         return $product_id;
     }
     
-    private function updateProduct($product_id, $product) {
+    private function updateProductData($product_id, $product) {
         $updates = [];
         
         if (isset($product['model'])) {
@@ -461,6 +461,295 @@ class ProductImporter extends \Opencart\System\Engine\Controller {
                 'data' => [
                     'product_id' => $product_id,
                     'message' => 'Product deleted successfully'
+                ]
+            ]));
+            
+        } catch (\Exception $e) {
+            $this->response->setOutput(json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]));
+        }
+    }
+    
+    public function updateCategory(): void {
+        $this->response->addHeader('Content-Type: application/json');
+        
+        // Проверка API токена
+        $token = $this->request->server['HTTP_X_API_TOKEN'] ?? '';
+        if (empty($token)) {
+            $this->response->setOutput(json_encode([
+                'success' => false,
+                'error' => 'API token required',
+                'code' => 401
+            ]));
+            return;
+        }
+        
+        // Проверка токена в БД
+        $query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "api_tokens` WHERE token = '" . $this->db->escape($token) . "' AND status = '1'");
+        
+        if (!$query->num_rows) {
+            $this->response->setOutput(json_encode([
+                'success' => false,
+                'error' => 'Invalid API token',
+                'code' => 401
+            ]));
+            return;
+        }
+        
+        if ($this->request->server['REQUEST_METHOD'] !== 'POST') {
+            $this->response->setOutput(json_encode([
+                'success' => false,
+                'error' => 'Method not allowed',
+                'code' => 405
+            ]));
+            return;
+        }
+        
+        $json = json_decode(file_get_contents('php://input'), true);
+        
+        if (!isset($json['category_id'])) {
+            $this->response->setOutput(json_encode([
+                'success' => false,
+                'error' => 'Category ID is required'
+            ]));
+            return;
+        }
+        
+        $category_id = (int)$json['category_id'];
+        
+        try {
+            // Check if category exists
+            $query = $this->db->query("SELECT category_id FROM `" . DB_PREFIX . "category` WHERE category_id = '" . $category_id . "'");
+            
+            if ($query->num_rows == 0) {
+                $this->response->setOutput(json_encode([
+                    'success' => false,
+                    'error' => 'Category not found'
+                ]));
+                return;
+            }
+            
+            // Build update query
+            $updates = [];
+            
+            if (isset($json['name']) && !empty($json['name'])) {
+                $updates[] = "cd.name = '" . $this->db->escape($json['name']) . "'";
+            }
+            
+            if (isset($json['description'])) {
+                $updates[] = "cd.description = '" . $this->db->escape($json['description']) . "'";
+            }
+            
+            if (isset($json['parent_id'])) {
+                $updates[] = "c.parent_id = '" . (int)$json['parent_id'] . "'";
+            }
+            
+            if (isset($json['status'])) {
+                $updates[] = "c.status = '" . (int)$json['status'] . "'";
+            }
+            
+            if (isset($json['meta_title'])) {
+                $updates[] = "cd.meta_title = '" . $this->db->escape($json['meta_title']) . "'";
+            }
+            
+            if (isset($json['meta_description'])) {
+                $updates[] = "cd.meta_description = '" . $this->db->escape($json['meta_description']) . "'";
+            }
+            
+            if (isset($json['keyword'])) {
+                $updates[] = "c.keyword = '" . $this->db->escape($json['keyword']) . "'";
+            }
+            
+            if (empty($updates)) {
+                $this->response->setOutput(json_encode([
+                    'success' => false,
+                    'error' => 'No fields to update'
+                ]));
+                return;
+            }
+            
+            // Update category
+            $sql = "UPDATE `" . DB_PREFIX . "category` c LEFT JOIN `" . DB_PREFIX . "category_description` cd ON c.category_id = cd.category_id SET " . implode(', ', $updates) . " WHERE c.category_id = '" . $category_id . "' AND cd.language_id = '" . (int)$this->config->get('config_language_id') . "'";
+            $this->db->query($sql);
+            
+            $this->response->setOutput(json_encode([
+                'success' => true,
+                'data' => [
+                    'category_id' => $category_id,
+                    'message' => 'Category updated successfully'
+                ]
+            ]));
+            
+        } catch (\Exception $e) {
+            $this->response->setOutput(json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]));
+        }
+    }
+    
+    public function updateProduct(): void {
+        $this->response->addHeader('Content-Type: application/json');
+        
+        // Проверка API токена
+        $token = $this->request->server['HTTP_X_API_TOKEN'] ?? '';
+        if (empty($token)) {
+            $this->response->setOutput(json_encode([
+                'success' => false,
+                'error' => 'API token required',
+                'code' => 401
+            ]));
+            return;
+        }
+        
+        // Проверка токена в БД
+        $query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "api_tokens` WHERE token = '" . $this->db->escape($token) . "' AND status = '1'");
+        
+        if (!$query->num_rows) {
+            $this->response->setOutput(json_encode([
+                'success' => false,
+                'error' => 'Invalid API token',
+                'code' => 401
+            ]));
+            return;
+        }
+        
+        if ($this->request->server['REQUEST_METHOD'] !== 'POST') {
+            $this->response->setOutput(json_encode([
+                'success' => false,
+                'error' => 'Method not allowed',
+                'code' => 405
+            ]));
+            return;
+        }
+        
+        $json = json_decode(file_get_contents('php://input'), true);
+        
+        if (!isset($json['product_id'])) {
+            $this->response->setOutput(json_encode([
+                'success' => false,
+                'error' => 'Product ID is required'
+            ]));
+            return;
+        }
+        
+        $product_id = (int)$json['product_id'];
+        
+        try {
+            // Check if product exists
+            $query = $this->db->query("SELECT product_id FROM `" . DB_PREFIX . "product` WHERE product_id = '" . $product_id . "'");
+            
+            if ($query->num_rows == 0) {
+                $this->response->setOutput(json_encode([
+                    'success' => false,
+                    'error' => 'Product not found'
+                ]));
+                return;
+            }
+            
+            // Build update queries
+            $product_updates = [];
+            $desc_updates = [];
+            
+            // Product table fields
+            if (isset($json['model'])) {
+                $product_updates[] = "model = '" . $this->db->escape($json['model']) . "'";
+            }
+            
+            if (isset($json['sku'])) {
+                $product_updates[] = "sku = '" . $this->db->escape($json['sku']) . "'";
+            }
+            
+            if (isset($json['price'])) {
+                $product_updates[] = "price = '" . (float)$json['price'] . "'";
+            }
+            
+            if (isset($json['quantity'])) {
+                $product_updates[] = "quantity = '" . (int)$json['quantity'] . "'";
+            }
+            
+            if (isset($json['status'])) {
+                $product_updates[] = "status = '" . (int)$json['status'] . "'";
+            }
+            
+            if (isset($json['cost'])) {
+                $product_updates[] = "cost = '" . (float)$json['cost'] . "'";
+            }
+            
+            if (isset($json['shipping'])) {
+                $product_updates[] = "shipping = '" . (float)$json['shipping'] . "'";
+            }
+            
+            if (isset($json['weight'])) {
+                $product_updates[] = "weight = '" . (float)$json['weight'] . "'";
+            }
+            
+            if (isset($json['length'])) {
+                $product_updates[] = "length = '" . (float)$json['length'] . "'";
+            }
+            
+            if (isset($json['width'])) {
+                $product_updates[] = "width = '" . (float)$json['width'] . "'";
+            }
+            
+            if (isset($json['height'])) {
+                $product_updates[] = "height = '" . (float)$json['height'] . "'";
+            }
+            
+            // Description table fields
+            if (isset($json['name'])) {
+                $desc_updates[] = "name = '" . $this->db->escape($json['name']) . "'";
+            }
+            
+            if (isset($json['description'])) {
+                $desc_updates[] = "description = '" . $this->db->escape($json['description']) . "'";
+            }
+            
+            if (isset($json['meta_title'])) {
+                $desc_updates[] = "meta_title = '" . $this->db->escape($json['meta_title']) . "'";
+            }
+            
+            if (isset($json['meta_description'])) {
+                $desc_updates[] = "meta_description = '" . $this->db->escape($json['meta_description']) . "'";
+            }
+            
+            if (isset($json['meta_keyword'])) {
+                $desc_updates[] = "meta_keyword = '" . $this->db->escape($json['meta_keyword']) . "'";
+            }
+            
+            if (empty($product_updates) && empty($desc_updates)) {
+                $this->response->setOutput(json_encode([
+                    'success' => false,
+                    'error' => 'No fields to update'
+                ]));
+                return;
+            }
+            
+            // Update product
+            if (!empty($product_updates)) {
+                $sql = "UPDATE `" . DB_PREFIX . "product` SET " . implode(', ', $product_updates) . " WHERE product_id = '" . $product_id . "'";
+                $this->db->query($sql);
+            }
+            
+            // Update product description
+            if (!empty($desc_updates)) {
+                $sql = "UPDATE `" . DB_PREFIX . "product_description` SET " . implode(', ', $desc_updates) . " WHERE product_id = '" . $product_id . "' AND language_id = '" . (int)$this->config->get('config_language_id') . "'";
+                $this->db->query($sql);
+            }
+            
+            // Update category if provided
+            if (isset($json['category_id'])) {
+                $this->db->query("DELETE FROM `" . DB_PREFIX . "product_to_category` WHERE product_id = '" . $product_id . "'");
+                $this->db->query("INSERT INTO `" . DB_PREFIX . "product_to_category` (product_id, category_id) VALUES ('" . $product_id . "', '" . (int)$json['category_id'] . "')");
+            }
+            
+            $this->response->setOutput(json_encode([
+                'success' => true,
+                'data' => [
+                    'product_id' => $product_id,
+                    'message' => 'Product updated successfully'
                 ]
             ]));
             
