@@ -359,6 +359,12 @@ class ProductImporter extends \Opencart\System\Engine\Controller {
             $this->db->query("UPDATE `" . DB_PREFIX . "product` SET " . implode(', ', $updates) . ", date_modified = NOW() WHERE product_id = '" . (int)$product_id . "'");
         }
         
+        // Update category if provided
+        if (isset($product['category_id'])) {
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "product_to_category` WHERE product_id = '" . (int)$product_id . "'");
+            $this->db->query("INSERT INTO `" . DB_PREFIX . "product_to_category` (product_id, category_id) VALUES ('" . (int)$product_id . "', '" . (int)$product['category_id'] . "')");
+        }
+        
         if (isset($product['name']) || isset($product['description'])) {
             $desc_updates = [];
             if (isset($product['name'])) {
@@ -373,7 +379,7 @@ class ProductImporter extends \Opencart\System\Engine\Controller {
                 $this->db->query("UPDATE `" . DB_PREFIX . "product_description` SET " . implode(', ', $desc_updates) . " WHERE product_id = '" . (int)$product_id . "' AND language_id = '" . (int)$this->config->get('config_language_id') . "'");
             }
         }
-        
+    }    
         if (isset($product['category_id'])) {
             $this->db->query("DELETE FROM `" . DB_PREFIX . "product_to_category` WHERE product_id = '" . (int)$product_id . "'");
             $this->db->query("INSERT INTO `" . DB_PREFIX . "product_to_category` (product_id, category_id) VALUES ('" . (int)$product_id . "', '" . (int)$product['category_id'] . "')");
