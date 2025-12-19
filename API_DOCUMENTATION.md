@@ -52,7 +52,10 @@ curl -X POST "http://your-store.com/index.php?route=tool/product_importer|create
     "name": "New Category",
     "description": "Category description",
     "parent_id": 0,
-    "status": 1
+    "status": 1,
+    "meta_title": "Category Meta Title",
+    "meta_description": "Category Meta Description",
+    "keyword": "category-seo-keyword"
   }'
 ```
 
@@ -68,7 +71,89 @@ curl -X POST "http://your-store.com/index.php?route=tool/product_importer|create
 }
 ```
 
+#### Update Category
+```bash
+curl -X POST "http://your-store.com/index.php?route=tool/product_importer|updateCategory" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Token: test_api_token_12345" \
+  -d '{
+    "category_id": 25,
+    "name": "Updated Category Name",
+    "description": "Updated description",
+    "parent_id": 0,
+    "status": 1,
+    "meta_title": "Updated Meta Title",
+    "meta_description": "Updated meta description",
+    "keyword": "updated-seo-keyword"
+  }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "category_id": 25,
+    "message": "Category updated successfully"
+  },
+  "timestamp": "2025-12-19 17:53:00"
+}
+```
+
+#### Delete Category
+```bash
+curl -X POST "http://your-store.com/index.php?route=tool/product_importer|deleteCategory" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Token: test_api_token_12345" \
+  -d '{
+    "category_id": 25
+  }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "category_id": 25,
+    "message": "Category deleted successfully"
+  },
+  "timestamp": "2025-12-19 17:53:00"
+}
+```
+
 ### Products
+
+#### Get All Products
+```bash
+curl -X GET "http://your-store.com/index.php?route=tool/product_importer|products" \
+  -H "X-API-Token: test_api_token_12345"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "products": [
+      {
+        "product_id": "1",
+        "name": "Test Product",
+        "model": "TP001",
+        "sku": "TEST-001",
+        "price": "99.9900",
+        "quantity": "100",
+        "status": "1",
+        "date_added": "2025-12-19 17:53:00",
+        "date_modified": "2025-12-19 17:53:00",
+        "category_name": "Test Category"
+      }
+    ],
+    "total": 1
+  },
+  "timestamp": "2025-12-19 17:53:00"
+}
+```
 
 #### Import Products
 ```bash
@@ -102,6 +187,64 @@ curl -X POST "http://your-store.com/index.php?route=tool/product_importer|import
     "success": 1,
     "failed": 0,
     "message": "Import completed. Added: 1, Updated: 1, Failed: 0"
+  },
+  "timestamp": "2025-12-19 17:53:00"
+}
+```
+
+#### Update Product
+```bash
+curl -X POST "http://your-store.com/index.php?route=tool/product_importer|updateProduct" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Token: test_api_token_12345" \
+  -d '{
+    "product_id": 1,
+    "name": "Updated Product Name",
+    "model": "UPD-001",
+    "sku": "UPDATED-001",
+    "price": 149.99,
+    "quantity": 50,
+    "description": "<p>Updated product description</p>",
+    "category_id": 2,
+    "status": 1,
+    "meta_title": "Updated Meta Title",
+    "meta_description": "Updated meta description",
+    "weight": 1.5,
+    "length": 10,
+    "width": 5,
+    "height": 3
+  }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "product_id": 1,
+    "message": "Product updated successfully"
+  },
+  "timestamp": "2025-12-19 17:53:00"
+}
+```
+
+#### Delete Product
+```bash
+curl -X POST "http://your-store.com/index.php?route=tool/product_importer|deleteProduct" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Token: test_api_token_12345" \
+  -d '{
+    "product_id": 1
+  }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "product_id": 1,
+    "message": "Product deleted successfully"
   },
   "timestamp": "2025-12-19 17:53:00"
 }
