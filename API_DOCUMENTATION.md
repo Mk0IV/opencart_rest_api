@@ -250,6 +250,38 @@ curl -X POST "http://your-store.com/index.php?route=tool/product_importer|delete
 }
 ```
 
+#### Upload Image
+Upload a product image via base64 encoding.
+
+```bash
+curl -X POST "http://your-store.com/index.php?route=tool/product_importer|uploadImage" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Token: test_api_token_12345" \
+  -d '{
+    "filename": "product_image.jpg",
+    "image_data": "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
+  }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "image_path": "catalog/product_image.jpg",
+    "filename": "product_image.jpg"
+  },
+  "timestamp": "2025-12-19 23:50:00"
+}
+```
+
+**Notes:**
+- `image_data` should be a base64-encoded image with optional data URL prefix
+- Supported formats: JPEG, PNG, GIF, BMP
+- If file already exists, it will be reused (no overwrite)
+- Maximum file size is limited by PHP settings (upload_max_filesize, post_max_size)
+- The returned `image_path` can be used in product `image` field
+
 ## Error Responses
 
 All errors return JSON with error details:

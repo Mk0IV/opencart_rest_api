@@ -783,4 +783,148 @@ class ProductImporter extends \Opencart\System\Engine\Controller {
             ]));
         }
     }
+    
+    public function uploadImage(): void {
+        $this->response->addHeader('Content-Type: application/json');
+        
+        // Проверка API токена
+        $token = $this->request->server['HTTP_X_API_TOKEN'] ?? '';
+        if (empty($token)) {
+            $this->response->setOutput(json_encode([
+                'success' => false,
+                'error' => 'API token required',
+                'code' => 401
+            ]));
+            return;
+        }
+        
+        // Проверка токена в БД
+        $query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "api_tokens` WHERE token = '" . $this->db->escape($token) . "' AND status = '1'");
+        
+        if (!$query->num_rows) {
+            $this->response->setOutput(json_encode([
+                'success' => false,
+                'error' => 'Invalid API token',
+                'code' => 401
+            ]));
+            return;
+        }
+        
+        if ($this->request->server['REQUEST_METHOD'] !== 'POST') {
+            $this->response->setOutput(json_encode([
+                'success' => false,
+                'error' => 'Method not allowed',
+                'code' => 405
+            ]));
+            return;
+        }
+        
+        $json = json_decode(file_get_contents('php://input'), true);
+        
+        // Support both formats: old (type, id, image) and new (filename, image_data)
+        if (isset($json['filename']) && isset($json['image_data'])) {
+            // New format: simple file upload for sync script
+            $filename = basename($json['filename']);
+            $imageData = $json['image_data'];
+            
+            // Validate filename
+            if (!preg_match('/^[a-zA-Z0-9._-]+$/', $filename)) {
+                $this->response->setOutput(json_encode([
+                    'success' => false,
+                    'error' => 'Invalid filename',
+                    'code' => 400
+                ]));
+                return;
+            }
+            
+            // Decode base64 (remove data URL prefix if present)
+            $imageData = preg_replace('/^data:image\/\w+;base64,/', '', $imageData);
+            $imageData = base64_decode($imageData);
+            
+            if ($imageData === false) {
+                $this->response->setOutput(json_encode([
+                    'success' => false,
+                    'error' => 'Invalid base64 image data',
+                    'code' => 400
+                ]));
+                return;
+            }
+            
+            // Validate image data
+            $tempFile = tempnam(sys_get_temp_dir(), 'img_upload_');
+            file_put_contents($tempFile, $imageData);
+            
+            $imageInfo = @getimagesize($tempFile);
+            if ($imageInfo === false) {
+                unlink($tempFile);
+                $this->response->setOutput(json_encode([
+                    'success' => false,
+                    'error' => 'Invalid image file',
+                    'code' => 400
+                ]));
+                return;
+            }
+            
+            // Ensure catalog directory exists
+            $catalogDir = DIR_IMAGE . 'catalog';
+            if (!is_dir($catalogDir)) {
+                mkdir($catalogDir, 0755, true);
+            }
+            
+            // Save the image
+            $targetPath = $catalogDir . '/' . $filename;
+            
+            // Check if file already exists - reuse existing file
+            if (file_exists($targetPath)) {
+                unlink($tempFile);
+                $this->response->setOutput(json_encode([
+                    'success' => true,
+                    'data' => [
+                        'image_path' => 'catalog/' . $filename,
+                        'filename' => $filename,
+                        'existed' => true
+                    ],
+                    'timestamp' => date('Y-m-d H:i:s')
+                ]));
+                return;
+            }
+            
+            // Move temp file to target location
+            if (rename($tempFile, $targetPath)) {
+                chmod($targetPath, 0644);
+                $this->response->setOutput(json_encode([
+                    'success' => true,
+                    'data' => [
+                        'image_path' => 'catalog/' . $filename,
+                        'filename' => $filename
+                    ],
+                    'timestamp' => date('Y-m-d H:i:s')
+                ]));
+                return;
+            } else {
+                @unlink($tempFile);
+                $this->response->setOutput(json_encode([
+                    'success' => false,
+                    'error' => 'Failed to save image',
+                    'code' => 500
+                ]));
+                return;
+            }
+        }
+        
+        // Original format check for backward compatibility
+        if (!isset($json['type']) || !isset($json['id']) || !isset($json['image'])) {
+            $this->response->setOutput(json_encode([
+                'success' => false,
+                'error' => 'Either (filename and image_data) or (type, id and image) are required'
+            ]));
+            return;
+        }
+        
+        // Original format implementation would go here
+        $this->response->setOutput(json_encode([
+            'success' => false,
+            'error' => 'Original format not yet implemented'
+        ]));
+    }
 }
