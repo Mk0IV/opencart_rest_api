@@ -1,0 +1,63 @@
+{
+  "name": "Product Importer REST API",
+  "version": "1.0.0",
+  "author": "OpenCart Extension Developer",
+  "link": "https://www.opencart.com",
+  "code": "product_importer",
+  "type": "module",
+  "extension": "module",
+  "license": "MIT",
+  "description": "REST API extension for importing products and managing categories in OpenCart 4.x",
+  "files": [
+    {
+      "source": "catalog/controller/api/categories.php",
+      "destination": "catalog/controller/api/categories.php"
+    },
+    {
+      "source": "catalog/controller/api/products.php",
+      "destination": "catalog/controller/api/products.php"
+    },
+    {
+      "source": "catalog/controller/api/import_logs.php",
+      "destination": "catalog/controller/api/import_logs.php"
+    },
+    {
+      "source": "catalog/model/extension/module/product_importer/api_category.php",
+      "destination": "catalog/model/extension/module/product_importer/api_category.php"
+    },
+    {
+      "source": "catalog/model/extension/module/product_importer/api_product_import.php",
+      "destination": "catalog/model/extension/module/product_importer/api_product_import.php"
+    },
+    {
+      "source": "catalog/model/extension/module/product_importer/product_import_handler.php",
+      "destination": "catalog/model/extension/module/product_importer/product_import_handler.php"
+    },
+    {
+      "source": "catalog/library/product_importer/product_validator.php",
+      "destination": "catalog/library/product_importer/product_validator.php"
+    },
+    {
+      "source": "catalog/library/product_importer/import_logger.php",
+      "destination": "catalog/library/product_importer/import_logger.php"
+    },
+    {
+      "source": "admin/controller/extension/module/product_importer.php",
+      "destination": "admin/controller/extension/module/product_importer.php"
+    },
+    {
+      "source": "admin/view/template/extension/module/product_importer.twig",
+      "destination": "admin/view/template/extension/module/product_importer.twig"
+    },
+    {
+      "source": "admin/language/en-gb/extension/module/product_importer.php",
+      "destination": "admin/language/en-gb/extension/module/product_importer.php"
+    }
+  ],
+  "sql": [
+    {
+      "source": "install.sql",
+      "destination": "install.sql"
+    }
+  ]
+}
